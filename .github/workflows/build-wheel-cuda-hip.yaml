@@ -177,9 +177,18 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-22.04", "macos-15-intel", "windows-2022", "windows-11-arm"]
-        # Build only with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
+        # Build with Python 3.10 for abi3 wheel (compatible with all Python 3.10+)
         pyver: ["3.10"]
         vulkan: ["1.4.313.2"]
+        exclude:
+          # Python 3.10 is not available for Windows ARM64
+          - os: "windows-11-arm"
+            pyver: "3.10"
+        include:
+          # Windows ARM64 requires Python 3.14+ (earliest ARM64 build available)
+          - os: "windows-11-arm"
+            pyver: "3.14"
+            vulkan: "1.4.313.2"
     env:
       VULKAN_VERSION: ${{ matrix.vulkan }}
     steps:
