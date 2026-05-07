@@ -289,7 +289,7 @@ jobs:
           XLLAMACPP_BUILD_VULKAN: "1"
           VERSIONEER_CLOSEST_TAG_ONLY: "1"
           VERBOSE: "1"
-          CMAKE_ARGS: ${{ runner.arch == 'ARM64' && '-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++' || '' }}
+          CMAKE_ARGS: ${{ runner.arch == 'ARM64' && '-G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release' || '' }}
         run: |
           python --version
           printenv
