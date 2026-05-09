@@ -503,6 +503,40 @@ jobs:
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
+      - name: Verify no CXXABI_1.3.15 dependency
+        run: |
+          echo "=== Checking wheel for CXXABI_1.3.15 dependency ==="
+          # Unpack the wheel and inspect all shared libraries
+          mkdir -p /tmp/wheel_check
+          unzip -o dist/*.whl -d /tmp/wheel_check
+
+          FOUND_CXXABI_1_3_15=0
+          for so in $(find /tmp/wheel_check -name "*.so"); do
+            echo "--- Checking: $so ---"
+            # List all CXXABI version requirements
+            objdump -T "$so" 2>/dev/null | grep -i "CXXABI" | sort -u || true
+            # Check specifically for CXXABI_1.3.15
+            if objdump -T "$so" 2>/dev/null | grep -q "CXXABI_1.3.15"; then
+              echo "❌ ERROR: $so depends on CXXABI_1.3.15!"
+              FOUND_CXXABI_1_3_15=1
+            fi
+          done
+
+          rm -rf /tmp/wheel_check
+
+          if [ "$FOUND_CXXABI_1_3_15" -eq 1 ]; then
+            echo ""
+            echo "❌ FAILURE: Wheel contains shared libraries that depend on CXXABI_1.3.15."
+            echo "This symbol is only available in libstdc++ from GCC 14+, which is not"
+            echo "present on most deployment targets (e.g. Ubuntu 22.04 ships CXXABI_1.3.13)."
+            echo ""
+            echo "Ensure the build uses the SYSTEM compiler (/usr/bin/g++) instead of"
+            echo "conda's GCC 14.x by setting CC=/usr/bin/gcc and CXX=/usr/bin/g++."
+            exit 1
+          fi
+
+          echo "✅ No CXXABI_1.3.15 dependency found. Wheel is compatible."
+
       # - uses: actions/upload-artifact@v4
       #   with:
       #     name: artifacts-cuda-${{ env.CUDA_VERSION }}-${{ matrix.platform }}
