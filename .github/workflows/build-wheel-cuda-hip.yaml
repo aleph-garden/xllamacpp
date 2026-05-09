@@ -496,8 +496,13 @@ jobs:
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
           # CMAKE_ARGS is picked up by scripts/setup.sh to pass to CMake
-          export CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++"
+          # -DCMAKE_CUDA_HOST_COMPILER ensures nvcc also uses system g++ for
+          # host-side compilation, preventing CXXABI_1.3.15 from CUDA objects.
+          export CMAKE_ARGS="-DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CUDA_HOST_COMPILER=/usr/bin/g++"
           echo "=== Forcing system compiler to avoid CXXABI_1.3.15 dependency ==="
+          echo "CC=$CC"
+          echo "CXX=$CXX"
+          echo "CMAKE_ARGS=$CMAKE_ARGS"
           $CXX --version
           
           make
