@@ -111,7 +111,7 @@ def build_llamacpp() -> None:
         log("Optimizing for native CPU (GGML_NATIVE=ON by default)")
 
     if system == "Darwin":
-        if "MACOSX_DEPLOYMENT_TARGET" not in os.environ:
+        if not os.environ.get("MACOSX_DEPLOYMENT_TARGET"):
             raise SystemExit("MACOSX_DEPLOYMENT_TARGET must be set for macOS builds")
         cmake_args.append(
             f"-DCMAKE_OSX_DEPLOYMENT_TARGET={os.environ['MACOSX_DEPLOYMENT_TARGET']}"
