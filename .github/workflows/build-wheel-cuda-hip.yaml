@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   build_wheels_hip_linux:
+    if: false
     name: Build Wheel HIP Linux (abi3) ${{matrix.hip}}
     runs-on: ubuntu-22.04
     strategy:
@@ -170,6 +171,7 @@ jobs:
 
 
   build_wheels_vulkan:
+    if: false
     name: Build Wheel Vulkan ${{ matrix.os }} (abi3)
     runs-on: ${{ matrix.os }}
     strategy:
