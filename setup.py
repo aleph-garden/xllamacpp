@@ -110,8 +110,8 @@ else:
     # (e.g., libcpp-httplib.a, libserver-context.a).
     EXTRA_OBJECTS.extend(
         [
-            f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
             f"{LLAMACPP_LIBS_DIR}/libserver-context.a",
+            f"{LLAMACPP_LIBS_DIR}/libllama-ui.a",
             f"{LLAMACPP_LIBS_DIR}/libcpp-httplib.a",
             f"{LLAMACPP_LIBS_DIR}/libmtmd.a",
             f"{LLAMACPP_LIBS_DIR}/libllama-common-base.a",

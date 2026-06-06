@@ -80,7 +80,9 @@ static void init(common_params &   params,
                  server_context &  ctx_server,
                  std::string &     listening_address,
                  std::promise<int> out) {
-    std::setlocale(LC_NUMERIC, "C");
+    // Do not call std::setlocale() in this Python extension module: it mutates
+    // the process-wide locale used by the host interpreter and other libraries.
+    // std::setlocale(LC_NUMERIC, "C");
 
     common_log_set_verbosity_thold(params.verbosity);
 
