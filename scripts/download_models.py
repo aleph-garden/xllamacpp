@@ -96,7 +96,14 @@ def _retry_after_seconds(err: urllib.error.HTTPError, attempt: int) -> float:
         except ValueError:
             try:
                 retry_at = parsedate_to_datetime(value)
-                return max(retry_at.timestamp() - time.time(), REQUEST_START_DELAY)
+                server_now = time.time()
+                response_date = err.headers.get("Date")
+                if response_date:
+                    try:
+                        server_now = parsedate_to_datetime(response_date).timestamp()
+                    except (TypeError, ValueError):
+                        pass
+                return max(retry_at.timestamp() - server_now, REQUEST_START_DELAY)
             except (TypeError, ValueError):
                 pass
 
