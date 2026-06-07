@@ -126,6 +126,7 @@ def open_url_with_retries(req: urllib.request.Request, timeout: int, description
                 raise
 
             sleep_for = _retry_after_seconds(err, attempt)
+            err.close()
             print(
                 f"HTTP 429 while requesting {description}; "
                 f"sleeping {sleep_for:.0f}s before retry {attempt + 1}/"
