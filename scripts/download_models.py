@@ -20,6 +20,7 @@ import time
 import urllib.error
 import urllib.request
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed, wait
+from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -27,9 +28,16 @@ MODELS_DIR = Path("models")
 CHUNKS_PER_FILE = 2  # Number of parallel connections per file download.
 MAX_CONCURRENT_FILES = 1  # Max files downloading simultaneously.
 READ_CHUNK_SIZE = 1 << 23  # 8 MB — buffer size for network reads / disk writes.
-MAX_HTTP_RETRIES = 6
+MAX_HTTP_RETRIES = 3
 RATE_LIMIT_BASE_SLEEP = 30.0
 REQUEST_START_DELAY = 1.0
+
+
+@dataclass(frozen=True)
+class RetryDelay:
+    seconds: float
+    detail: str
+
 
 # (filename, url, sha256)
 MODELS = [
@@ -87,12 +95,13 @@ def sha256_file(path: Path) -> str:
         return h.hexdigest()
 
 
-def _retry_after_seconds(err: urllib.error.HTTPError, attempt: int) -> float:
+def _retry_after_delay(err: urllib.error.HTTPError, attempt: int) -> RetryDelay:
     """Return the server-requested or exponential sleep time for HTTP 429."""
     value = err.headers.get("Retry-After")
     if value:
         try:
-            return max(float(value), REQUEST_START_DELAY)
+            seconds = max(float(value), REQUEST_START_DELAY)
+            return RetryDelay(seconds, f"Retry-After={value!r} ({seconds:.0f}s)")
         except ValueError:
             try:
                 retry_at = parsedate_to_datetime(value)
@@ -103,11 +112,26 @@ def _retry_after_seconds(err: urllib.error.HTTPError, attempt: int) -> float:
                         server_now = parsedate_to_datetime(response_date).timestamp()
                     except (TypeError, ValueError):
                         pass
-                return max(retry_at.timestamp() - server_now, REQUEST_START_DELAY)
+                seconds = max(retry_at.timestamp() - server_now, REQUEST_START_DELAY)
+                if response_date:
+                    detail = (
+                        f"Retry-After date={value!r}, response Date={response_date!r} "
+                        f"({seconds:.0f}s)"
+                    )
+                else:
+                    detail = (
+                        f"Retry-After date={value!r}, no response Date ({seconds:.0f}s)"
+                    )
+                return RetryDelay(seconds, detail)
             except (TypeError, ValueError):
                 pass
 
-    return RATE_LIMIT_BASE_SLEEP * (2**attempt)
+    seconds = RATE_LIMIT_BASE_SLEEP * (2**attempt)
+    if value:
+        detail = f"unparseable Retry-After={value!r}; using exponential backoff"
+    else:
+        detail = "no Retry-After header; using exponential backoff"
+    return RetryDelay(seconds, detail)
 
 
 def _sleep_before_request() -> None:
@@ -117,18 +141,23 @@ def _sleep_before_request() -> None:
 
 def open_url_with_retries(req: urllib.request.Request, timeout: int, description: str):
     """Open a URL, retrying HTTP 429 with backoff."""
+    request_timeout = timeout
     for attempt in range(MAX_HTTP_RETRIES + 1):
         try:
             _sleep_before_request()
-            return urllib.request.urlopen(req, timeout=timeout)
+            return urllib.request.urlopen(req, timeout=request_timeout)
         except urllib.error.HTTPError as err:
             if err.code != 429 or attempt == MAX_HTTP_RETRIES:
                 raise
 
-            sleep_for = _retry_after_seconds(err, attempt)
+            retry_delay = _retry_after_delay(err, attempt)
+            sleep_for = retry_delay.seconds
+            request_timeout = max(timeout, int(sleep_for) + 1)
             err.close()
             print(
                 f"HTTP 429 while requesting {description}; "
+                f"{retry_delay.detail}; "
+                f"next timeout {request_timeout}s; "
                 f"sleeping {sleep_for:.0f}s before retry {attempt + 1}/"
                 f"{MAX_HTTP_RETRIES}...",
                 flush=True,
