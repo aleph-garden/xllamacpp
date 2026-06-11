@@ -730,8 +730,17 @@ jobs:
                     
           python -m build --wheel
           
-          # On Windows, we use delvewheel for wheel repair
-          python -m delvewheel repair --exclude nvcuda.dll dist/*.whl -w dist
+          # On Windows, we use delvewheel for wheel repair.
+          # delvewheel must locate the CUDA redistributable DLLs (cudart64_*,
+          # cublas64_*, ...) to graft them into the wheel. CUDA 13 relocated
+          # these from <CUDA_PATH>\bin to <CUDA_PATH>\bin\x64 on Windows, while
+          # CUDA 12 keeps them in <CUDA_PATH>\bin. The toolkit action only puts
+          # \bin on PATH, so without this delvewheel fails with e.g.
+          # "Unable to find library: cublas64_13.dll". Add both dirs explicitly
+          # (semicolon = Windows path separator for --add-path).
+          python -m delvewheel repair \
+            --add-path "$CUDA_PATH/bin/x64;$CUDA_PATH/bin" \
+            --exclude nvcuda.dll dist/*.whl -w dist
           
           echo "CUDA_VERSION=$cuda_version" >> $GITHUB_ENV
 
