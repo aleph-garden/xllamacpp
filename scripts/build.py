@@ -115,7 +115,7 @@ def build_llamacpp() -> None:
         # supports, plus PTX (-virtual) for the highest major arch. That means
         # every GPU runs fully arch-optimized code with no JIT fallback -- i.e.
         # best performance across all architectures (at the cost of build time).
-        cuda_archs = os.environ.get("CUDA_ARCHITECTURES") or "all"
+        cuda_archs = os.environ.get("CUDA_ARCHITECTURES") or "native"
         log(f"Using CUDA architectures: {cuda_archs}")
         cmake_args.extend(
             [
