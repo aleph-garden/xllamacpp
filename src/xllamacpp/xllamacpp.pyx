@@ -421,7 +421,7 @@ cdef class CommonParamsSampling:
     @samplers.setter
     def samplers(self, value: str):
         cdef vector[string] split_values = value.split(";")
-        self.p.samplers = xllamacpp.common_sampler_types_from_names(split_values, True)
+        self.p.samplers = xllamacpp.common_sampler_types_from_names(split_values)
 
     @property
     def backend_sampling(self) -> bool:

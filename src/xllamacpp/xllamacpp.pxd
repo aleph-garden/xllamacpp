@@ -775,6 +775,6 @@ cdef extern from "common.h":
     
 cdef extern from "sampling.h":
 
-    std_vector[common_sampler_type] common_sampler_types_from_names(const std_vector[std_string] & names, bint allow_alt_names)
+    std_vector[common_sampler_type] common_sampler_types_from_names(const std_vector[std_string] & names)
     
     std_string common_sampler_type_to_str(common_sampler_type cnstr)
