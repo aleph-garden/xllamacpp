@@ -15,7 +15,7 @@ get_all_releases() {
 
     while true; do
         response=$(curl -s "${headers[@]}" \
-                        "https://api.github.com/repos/xorbitsai/xllamacpp/releases?page=$page&per_page=$per_page")
+                        "https://api.github.com/repos/${GITHUB_REPOSITORY:-xorbitsai/xllamacpp}/releases?page=$page&per_page=$per_page")
         
         # Check if the response is valid JSON
         if ! echo "$response" | jq empty > /dev/null 2>&1; then

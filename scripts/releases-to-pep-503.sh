@@ -74,7 +74,7 @@ headers+=('--header' 'content-type: application/json')
 for release in $releases; do
     log_info "Processing release: $release"
     response=$(curl -s "${headers[@]}" \
-                    "https://api.github.com/repos/xorbitsai/xllamacpp/releases/tags/$release")
+                    "https://api.github.com/repos/${GITHUB_REPOSITORY:-xorbitsai/xllamacpp}/releases/tags/$release")
     
     if [ -z "$response" ]; then
         log_error "Empty response from GitHub API for release $release"
