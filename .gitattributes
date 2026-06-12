@@ -1,1 +1,5 @@
 src/xllamacpp/_version.py export-subst
+
+# Backport patches must stay LF so `git apply` matches the LF llama.cpp
+# source on Windows runners (autocrlf would otherwise CRLF-mangle them).
+patches/**/*.patch text eol=lf

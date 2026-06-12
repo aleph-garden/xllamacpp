@@ -1,0 +1,53 @@
+Subject: [PATCH] cuda: fix flash attention crash for d_head=512 with gqa_ratio=2
+
+Backport of ggml-org/llama.cpp#24526 (open as of 2026-06-12).
+
+Gemma 4 E2B/E4B MTP draft graph attention is head_count=4, head_count_kv=2
+(gqa_ratio=2) with key_length=value_length=512. The CUDA flash-attention
+dispatcher only instantiated DKQ=512 for gqa_ratio % 4 == 0, so gqa_ratio=2
+fell through to GGML_ABORT("fatal error") at fattn.cu:110 -> native abort
+(Windows 0xC0000409), which the sidecar fallback cascade cannot catch.
+
+Adds the ncols=4 / ncols2=4 handler (smallest existing (512,512) entry) for
+both the tile and tensor-core paths.
+
+Remove this patch once the fork's llama.cpp submodule is bumped to an upstream
+commit that contains #24526.
+---
+diff --git a/ggml/src/ggml-cuda/fattn-tile.cuh b/ggml/src/ggml-cuda/fattn-tile.cuh
+index 0a099810e144..3eb2473f98d9 100644
+--- a/ggml/src/ggml-cuda/fattn-tile.cuh
++++ b/ggml/src/ggml-cuda/fattn-tile.cuh
+@@ -1316,6 +1316,9 @@ static void launch_fattn_tile_switch_ncols2(ggml_backend_cuda_context & ctx, ggm
+ 
+             launch_fattn_tile_switch_ncols1<DKQ, DV, 1, use_logit_softcap>(ctx, dst);
+             return;
++        } else {
++            launch_fattn_tile_switch_ncols1<DKQ, DV, 4, use_logit_softcap>(ctx, dst);
++            return;
+         }
+     }
+     GGML_ABORT("fatal error");
+diff --git a/ggml/src/ggml-cuda/fattn.cu b/ggml/src/ggml-cuda/fattn.cu
+index d6c501b1d7ea..d7f65272ce04 100644
+--- a/ggml/src/ggml-cuda/fattn.cu
++++ b/ggml/src/ggml-cuda/fattn.cu
+@@ -85,7 +85,8 @@ static void ggml_cuda_flash_attn_ext_mma_f16_switch_ncols2(ggml_backend_cuda_con
+             ggml_cuda_flash_attn_ext_mma_f16_switch_ncols1<DKQ, DV, 1>(ctx, dst);
+             return;
+         } else {
+-            GGML_ABORT("fatal error");
++            ggml_cuda_flash_attn_ext_mma_f16_switch_ncols1<DKQ, DV, 4>(ctx, dst);
++            return;
+         }
+     }
+ 
+@@ -107,7 +108,7 @@ static void ggml_cuda_flash_attn_ext_mma_f16_switch_ncols2(ggml_backend_cuda_con
+ 
+         ggml_cuda_flash_attn_ext_mma_f16_switch_ncols1<DKQ, DV, 1>(ctx, dst);
+     } else {
+-        GGML_ABORT("fatal error");
++        ggml_cuda_flash_attn_ext_mma_f16_switch_ncols1<DKQ, DV, 4>(ctx, dst);
+     }
+ }
+ 

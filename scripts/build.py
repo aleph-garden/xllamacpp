@@ -53,10 +53,49 @@ def hip_compiler() -> str:
     return str(Path(hip_root) / "clang")
 
 
+PATCHES_DIR = ROOT / "patches" / "llama.cpp"
+
+
+def apply_llamacpp_patches() -> None:
+    """Apply local backport patches onto the vendored llama.cpp submodule.
+
+    Idempotent: a patch that is already applied (e.g. on a re-run in the same
+    checkout) is detected via a reverse-apply check and skipped, so the build
+    never hard-fails on a second invocation. Each patch carries a header noting
+    the upstream PR and the condition under which it should be dropped (a
+    submodule bump past the merge commit), keeping the temporary fork honest.
+    """
+    if not PATCHES_DIR.exists():
+        return
+    patches = sorted(PATCHES_DIR.glob("*.patch"))
+    if not patches:
+        return
+    for patch in patches:
+        check = subprocess.run(
+            ["git", "apply", "--check", str(patch)],
+            cwd=str(PROJECT),
+        )
+        if check.returncode != 0:
+            already = subprocess.run(
+                ["git", "apply", "--reverse", "--check", str(patch)],
+                cwd=str(PROJECT),
+            )
+            if already.returncode == 0:
+                log(f"llama.cpp patch already applied, skipping: {patch.name}")
+                continue
+            raise SystemExit(
+                f"llama.cpp patch does not apply (submodule drift?): {patch.name}"
+            )
+        run(["git", "apply", str(patch)], cwd=PROJECT)
+        log(f"applied llama.cpp patch: {patch.name}")
+
+
 def build_llamacpp() -> None:
     log("update from llama.cpp main repo")
     if not PROJECT.exists():
         raise SystemExit(f"Missing llama.cpp checkout: {PROJECT}")
+
+    apply_llamacpp_patches()
 
     system = platform.system()
     machine = platform.machine().lower()
