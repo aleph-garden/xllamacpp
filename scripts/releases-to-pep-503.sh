@@ -61,7 +61,7 @@ rm -rf "$tmp_dir"
 mkdir -p "$tmp_dir"
 
 # Filter releases by pattern
-releases=$(grep -E "$pattern" "$current_dir/all_releases.txt")
+releases=$(grep -E "$pattern" "$current_dir/all_releases.txt" || true)
 
 # Prepare curl headers
 headers=('--header' 'Accept: application/vnd.github.v3+json')
